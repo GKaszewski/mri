@@ -71,14 +71,7 @@ async def predict(file: UploadFile = File(...)):
     )
 
 
-app.mount("/static", StaticFiles(directory="frontend/dist/assets"), name="static")
-
-
-@app.get("/")
-@app.get("/{full_path:path}")
-async def serve_react_app(full_path: str = ""):
-    index_path = os.path.join("frontend", "dist", "index.html")
-    return FileResponse(index_path)
+app.mount("/", StaticFiles(directory="frontend/dist", html=True), name="frontend")
 
 
 if __name__ == "__main__":
