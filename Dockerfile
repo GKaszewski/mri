@@ -11,7 +11,7 @@ ENV UV_LINK_MODE=copy
 ENV APP_NAME=mri
 WORKDIR /app
 
-RUN apt-get update && apt-get install -y libgl1 libglib2.0-0 && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y libgl1 libglib2.0-0 ca-certificates && rm -rf /var/lib/apt/lists/*
 
 COPY web.py pyproject.toml uv.lock .python-version best_brain_tumor_resnet18.pth ./
 COPY --from=frontend-builder /app/frontend/dist ./frontend/dist
