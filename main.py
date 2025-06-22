@@ -1,3 +1,9 @@
+"""
+This project implements a binary image classification pipeline using PyTorch to detect brain tumors from MRI images.
+The pipeline uses a pretrained ResNet-18 as the backbone, finetuned for binary classification ("tumor" vs. "no tumor"),
+and is evaluated using accuracy metrics and ROC AUC.
+"""
+
 import os
 from PIL import Image
 
@@ -91,12 +97,12 @@ def eval_model(model, loader, criterion):
 def main():
     transform = transforms.Compose(
         [
-            transforms.Resize((224, 224)),
-            transforms.RandomHorizontalFlip(),
+            transforms.Resize((224, 224)), # resize to match ResNet input size
+            transforms.RandomHorizontalFlip(), 
             transforms.RandomRotation(degrees=15),
-            transforms.ColorJitter(brightness=0.1, contrast=0.1),
-            transforms.ToTensor(),
-            transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225]),
+            transforms.ColorJitter(brightness=0.1, contrast=0.1), # data augmentation to improve model generalization
+            transforms.ToTensor(), # convert PIL image to tensor
+            transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225]),  # normalize with ImageNet means and stds (because we use ResNet18 pretrained on ImageNet)
         ]
     )
 
@@ -111,7 +117,7 @@ def main():
     labels = [full_dataset.samples[i][1] for i in indices]
     train_idx, val_idx = train_test_split(
         indices, test_size=0.2, stratify=labels, random_state=42
-    )
+    ) # split dataset into training (80%) and validation (20%) sets, stratified by labels to ensure balanced classes
     train_dataset = Subset(full_dataset, train_idx)
     val_dataset = Subset(full_dataset, val_idx)
 
@@ -128,14 +134,14 @@ def main():
     weights = ResNet18_Weights.DEFAULT
     model = resnet18(weights=weights)
     num_features = model.fc.in_features
-    model.fc = nn.Linear(num_features, 1)  # Binary classification
+    model.fc = nn.Linear(num_features, 1)  # Binary classification (1 output neuron)
     model.to(device)
 
 
     yes = labels_counter[1]
     no = labels_counter[0]
     pos_weight = torch.tensor([no / yes],  dtype=torch.float32, device=device)
-    criterion = nn.BCEWithLogitsLoss(pos_weight=pos_weight)
+    criterion = nn.BCEWithLogitsLoss(pos_weight=pos_weight) # Binary Cross-Entropy with Logits Loss, using class weights to handle class imbalance
     optimizer = optim.Adam(model.parameters(), lr=1e-4)
 
     num_epochs = 50
