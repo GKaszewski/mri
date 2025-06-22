@@ -38,13 +38,19 @@ class BrainTumorDataset(Dataset):
         return image, label
 
 
+def get_device():
+    return torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+
 def train_one_epoch(model, loader, criterion, optimizer):
     model.train()
     running_loss = 0.0
+
+    device = get_device()
+
     for imgs, labels in loader:
-        imgs = imgs.cuda() if torch.cuda.is_available() else imgs
-        labels = labels.float().unsqueeze(1)
-        labels = labels.cuda() if torch.cuda.is_available() else labels
+        imgs = imgs.to(device, non_blocking=True)
+        labels = labels.float().unsqueeze(1).to(device)
 
         outputs = model(imgs)
         loss = criterion(outputs, labels)
@@ -61,16 +67,17 @@ def eval_model(model, loader, criterion):
     all_labels = []
     all_preds = []
 
+    device = get_device()
     model.eval()
+
     with torch.no_grad():
         for imgs, labels in loader:
-            imgs = imgs.cuda() if torch.cuda.is_available() else imgs
-            labels = labels.float().unsqueeze(1)
-            labels = labels.cuda() if torch.cuda.is_available() else labels
+            imgs = imgs.to(device, non_blocking=True)
+            labels = labels.float().unsqueeze(1).to(device)
 
             outputs = model(imgs)
             preds = torch.sigmoid(outputs).cpu().numpy().flatten()
-            all_labels.extend(labels.numpy())
+            all_labels.extend(labels.cpu().numpy().flatten())
             all_preds.extend(preds)
 
     predicted = [1 if p > 0.5 else 0 for p in all_preds]
@@ -93,8 +100,11 @@ def main():
         ]
     )
 
+    device = get_device()
+    print(f"Using device: {device}")
+
     full_dataset = BrainTumorDataset(
-        "mri-dataset/brain_tumor_dataset", transform=transform
+        "brain_tumor_dataset", transform=transform
     )
 
     indices = list(range(len(full_dataset)))
@@ -119,15 +129,16 @@ def main():
     model = resnet18(weights=weights)
     num_features = model.fc.in_features
     model.fc = nn.Linear(num_features, 1)  # Binary classification
-    model = model.cuda() if torch.cuda.is_available() else model
+    model.to(device)
+
 
     yes = labels_counter[1]
     no = labels_counter[0]
-    pos_weight = torch.tensor([no / yes])
+    pos_weight = torch.tensor([no / yes],  dtype=torch.float32, device=device)
     criterion = nn.BCEWithLogitsLoss(pos_weight=pos_weight)
     optimizer = optim.Adam(model.parameters(), lr=1e-4)
 
-    num_epochs = 10
+    num_epochs = 50
     best_auc = 0
     epochs_no_improve = 0
     patience = 3  # Stop if no improvement for 3 epochs
