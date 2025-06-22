@@ -1,0 +1,15 @@
+services:
+  tumor-webapp:
+    build: .
+    image: tumor-webapp:latest
+    container_name: tumor-webapp
+    ports:
+      - "8000:8000"
+    # Uncomment the next two lines if you need to access files or models on the host:
+    # volumes:
+    #   - ./path/on/host:/app/path/in/container
+    environment:
+      - UV_COMPILE_BYTECODE=1
+      - UV_LINK_MODE=copy
+      - APP_NAME=mri
+    restart: unless-stopped
